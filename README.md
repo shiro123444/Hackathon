@@ -39,6 +39,8 @@ npm run start
  `SMTP_PASS`
  `APPLY_TO_EMAIL`
 
+也可以直接在项目根目录放 `.env` 或 `.env.local`，`server.mjs` 会自动读取。
+
 
 ## 架构
 
