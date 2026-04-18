@@ -33,7 +33,9 @@ export default function App() {
   const reducedMotion = usePrefersReducedMotion();
   const pointer = useRef({ x: 0, y: 0 });
   const stageRef = useRef(null);
+  const heroSectionRef = useRef(null);
   const observerRef = useRef(null);
+  const heroLoadObserverRef = useRef(null);
   const frameRef = useRef(0);
   const snapTimeoutRef = useRef(0);
   const progressRef = useRef(0);
@@ -42,6 +44,7 @@ export default function App() {
   const [introDone, setIntroDone] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [storyProgress, setStoryProgress] = useState(0);
+  const [canLoadHeroCanvas, setCanLoadHeroCanvas] = useState(false);
   const [isDesktopStory, setIsDesktopStory] = useState(
     () => typeof window !== "undefined" && window.innerWidth > DESKTOP_BREAKPOINT
   );
@@ -183,6 +186,50 @@ export default function App() {
     const timer = window.setTimeout(() => setIntroDone(true), reducedMotion ? 60 : 1200);
     return () => window.clearTimeout(timer);
   }, [reducedMotion]);
+
+  useEffect(() => {
+    if (!isDesktopStory) {
+      setCanLoadHeroCanvas(false);
+      if (heroLoadObserverRef.current) {
+        heroLoadObserverRef.current.disconnect();
+        heroLoadObserverRef.current = null;
+      }
+      return undefined;
+    }
+
+    const heroElement = heroSectionRef.current;
+    if (!heroElement) return undefined;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setCanLoadHeroCanvas(true);
+      return undefined;
+    }
+
+    heroLoadObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        setCanLoadHeroCanvas(true);
+        if (heroLoadObserverRef.current) {
+          heroLoadObserverRef.current.disconnect();
+          heroLoadObserverRef.current = null;
+        }
+      },
+      {
+        root: null,
+        rootMargin: "240px 0px",
+        threshold: 0.01
+      }
+    );
+
+    heroLoadObserverRef.current.observe(heroElement);
+
+    return () => {
+      if (heroLoadObserverRef.current) {
+        heroLoadObserverRef.current.disconnect();
+        heroLoadObserverRef.current = null;
+      }
+    };
+  }, [isDesktopStory]);
 
   useEffect(() => {
     const onResize = () => setIsDesktopStory(window.innerWidth > DESKTOP_BREAKPOINT);
@@ -352,11 +399,12 @@ export default function App() {
 
       <main ref={stageRef} className={`story-stage ${isDesktopStory ? "" : "story-stage--stacked"}`}>
         <HeroSection
+          ref={heroSectionRef}
           pointer={pointer}
           reducedMotion={reducedMotion}
           introDone={introDone}
           isActive={isDesktopStory ? storyProgress < 0.72 : true}
-          showCanvas={isDesktopStory}
+          showCanvas={isDesktopStory && introDone && canLoadHeroCanvas}
           progressRef={progressRef}
           onGoToPanel={scrollToChapter}
         />
