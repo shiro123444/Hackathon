@@ -2,7 +2,6 @@
 
 黑客松。  
 
-
 ## 启动
 
 ```bash
@@ -41,7 +40,6 @@ npm run start
 
 也可以直接在项目根目录放 `.env` 或 `.env.local`，`server.mjs` 会自动读取。
 
-
 ## 架构
 
  `src/App.jsx`
@@ -54,4 +52,3 @@ npm run start
   报名表单，提交到 `/api/apply`。
  `server.mjs`
   Node 服务，开发时托管 Vite，中转报名邮件。
-
