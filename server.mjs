@@ -3,14 +3,55 @@ import nodemailer from "nodemailer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
+import { isValidEmail } from "./src/utils/emailValidation.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isProduction = process.env.NODE_ENV === "production";
 const port = Number(process.env.PORT || 4175);
+const loadedEnvKeys = new Set();
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
+
+async function loadEnvFile(filePath) {
+  try {
+    const content = await fs.readFile(filePath, "utf8");
+
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+
+      if (!line || line.startsWith("#")) continue;
+
+      const equalsIndex = line.indexOf("=");
+      if (equalsIndex < 0) continue;
+
+      const key = line.slice(0, equalsIndex).trim();
+      if (!key) continue;
+
+      let value = line.slice(equalsIndex + 1).trim();
+
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+
+      if (process.env[key] !== undefined && !loadedEnvKeys.has(key)) continue;
+
+      process.env[key] = value;
+      loadedEnvKeys.add(key);
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
+await loadEnvFile(path.join(__dirname, ".env"));
+await loadEnvFile(path.join(__dirname, ".env.local"));
+await loadEnvFile(path.join(__dirname, `.env.${process.env.NODE_ENV || "development"}`));
+await loadEnvFile(path.join(__dirname, `.env.${process.env.NODE_ENV || "development"}.local`));
 
 function env(name, fallback) {
   const value = process.env[name];
@@ -55,12 +96,20 @@ app.post("/api/apply", async (req, res) => {
     projectIdea: String(req.body?.projectIdea || "").trim()
   };
 
-  if (!payload.name || !payload.email || !payload.projectIdea) {
-    return res.status(400).json({ ok: false, message: "请至少填写姓名、邮箱和想法简介。" });
+  if (!payload.name || !payload.email || !payload.role || !payload.projectIdea) {
+    return res.status(400).json({ ok: false, message: "请填写姓名、邮箱、角色和想法简介。" });
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
-    return res.status(400).json({ ok: false, message: "邮箱格式不正确。" });
+  if (!isValidEmail(payload.email)) {
+    return res.status(400).json({ ok: false, message: "邮箱后缀不合法。" });
+  }
+
+  if (payload.role.length < 2) {
+    return res.status(400).json({ ok: false, message: "角色至少需要 2 个字符。" });
+  }
+
+  if (payload.projectIdea.length < 10) {
+    return res.status(400).json({ ok: false, message: "想法简介至少需要 10 个字符。" });
   }
 
   try {

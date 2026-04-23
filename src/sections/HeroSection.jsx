@@ -1,24 +1,25 @@
-import { lazy, Suspense } from "react";
+import { forwardRef, lazy, Suspense } from "react";
 import { HERO_COPY, HERO_FACTS, HERO_META } from "../content/siteContent";
 
 const HeroCanvas = lazy(() =>
   import("../components/HeroCanvas").then((module) => ({ default: module.HeroCanvas }))
 );
 
-export function HeroSection({
-  pointer,
-  reducedMotion,
-  introDone,
-  isActive,
-  showCanvas,
-  progressRef,
-  onGoToPanel
-}) {
+export const HeroSection = forwardRef(function HeroSection(
+  {
+    pointer,
+    reducedMotion,
+    introDone,
+    isActive,
+    showCanvas,
+    progressRef,
+    onGoToPanel
+  },
+  ref
+) {
   return (
-    <section
-      className="hero"
-      id="top"
-    >
+    <section className="hero" id="top" ref={ref}>
+      {!showCanvas ? <div className="hero__beam-origin" aria-hidden="true" /> : null}
       <div className="hero__canvas" aria-hidden="true">
         {showCanvas ? (
           <Suspense fallback={<div className="hero__canvas-fallback" />}>
@@ -71,4 +72,4 @@ export function HeroSection({
       </div>
     </section>
   );
-}
+});
